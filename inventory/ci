@@ -1,5 +1,2 @@
 [artifactory]
 172.31.86.12  ansible_ssh_user='ec2-user'
-
-[artifactory:vars]
-ansible_ssh_private_key_file = /home/ec2-user/project14/sclient.pem
