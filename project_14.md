@@ -352,16 +352,19 @@ pipeline {
 ...
 ```
 
-3. In the Ansible execution section, remove the hardcoded inventory/dev and replace with `${inventory}
-From now on, each time you hit on execute, it will expect an input.
+3. In the Ansible execution section, remove the hardcoded `inventory/dev` and replace with `${inventory}`
+From now on, each time you hit on execute, it will `expect an input`.
+
+![inventory-parameter](./images-project14/inventory-parameter.PNG)
+
+
+![inventory-parameter2](./images-project14/inventory-parameter2.PNG)
+
+Notice that the `default value` loads up, but we can now specify which environment we want to deploy the configuration to. Simply type sit and hit Run
 
 
 
-Notice that the default value loads up, but we can now specify which environment we want to deploy the configuration to. Simply type sit and hit Run
-
-
-
-Add another parameter. This time, introduce tagging in Ansible. You can limit the Ansible execution to a specific role or playbook desired. Therefore, add an Ansible tag to run against webserver only. Test this locally first to get the experience. Once you understand this, update `Jenkinsfile` and run it from `Jenkins`.
+Add another parameter. This time, `introduce tagging in Ansible``. You can limit the Ansible execution to a specific role or playbook desired`. Therefore, `add an Ansible tag` to run against `webserver only`. Test this locally first to get the experience. Once you understand this, update `Jenkinsfile` and run it from `Jenkins`.
 
 
 
@@ -370,3 +373,232 @@ Add another parameter. This time, introduce tagging in Ansible. You can limit th
 Our goal here is to `deploy` the application onto servers directly from `Artifactory` rather than from `git`. If you have not updated Ansible with an `Artifactory role`, simply use this guide to create an Ansible role for Artifactory (ignore the Nginx part). 
 
 [Configure Artifactory on Ubuntu 20.04](https://www.howtoforge.com/tutorial/ubuntu-jfrog/)
+
+### **Phase 1 – Prepare Jenkins**
+
+1. Fork the repository below into your GitHub account
+
+`https://github.com/darey-devops/php-todo.git`
+
+2. On you `Jenkins server`,  install `PHP` , its  `dependencies and Composer tool` (Feel free to do this manually at first, then update your Ansible accordingly later)
+
+    **-Install  php (7.4)**
+
+**Step 1: Update**
+
+ `sudo dnf upgrade --refresh`
+
+**Step 2: Import PHP Remi Repository**
+
+ Make sure to import the `appropriate repository` for your `version of CentOS Stream`
+
+ Import Remi PHP Repository for CentOS 9 Stream
+
+ While this is optional for EL9, it is recommended to enable the CRB
+
+ `sudo dnf config-manager --set-enabled crb`
+
+  Install both versions of EPEL for EL9.
+
+```py
+  sudo dnf install \
+    https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
+```
+
+Import the EL 9 Remi repository
+
+`sudo dnf install dnf-utils http://rpms.remirepo.net/enterprise/remi-release-9.rpm -y`
+
+To start, use the command below to enable EPEL for 
+
+```
+sudo dnf install \
+    https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-8.noarch.rpm
+```
+
+Now, use this command to import the Remi EL 8 repository that contains PHP
+
+`sudo dnf install dnf-utils http://rpms.remirepo.net/enterprise/remi-release-8.rpm -y`
+
+**Step 3: Enable PHP Remi Repository**
+
+`dnf module list php`
+
+After that, activate the version of PHP you want to install
+
+- Enable PHP 7.4 on CentOS Stream
+  
+  `sudo dnf module enable php:remi-7.4 -y`
+
+**Step 4: Install PHP 8.2, 8.1, 8.0 or 7.4**
+Now that the Remi PHP repository is enabled, you can set the PHP version you desire as the default on your CentOS Stream system.
+
+Apache (httpd) PHP:
+
+`sudo dnf install php php-cli -y`
+
+Nginx PHP:
+
+`sudo dnf install php-fpm php-cli -y`
+
+`php -v`
+
+`sudo dnf install php-cli php-fpm php-curl php-mysqlnd php-gd php-opcache php-zip php-intl php-common php-bcmath php-imagick php-xmlrpc php-json php-readline php-memcached php-redis php-mbstring php-apcu php-xml php-dom php-redis php-memcached php-memcache`
+
+You can execute the command below at any time to view the currently loaded modules.
+
+`php -m`
+
+Restart your PHP-FPM service.
+
+`sudo systemctl restart php-fpm`
+
+   **-Install COMPOSER**
+
+   `curl -sS https://getcomposer.org/installer | php`
+
+  `sudo mv composer.phar /usr/bin/composer`
+
+
+For Debian:
+
+    `sudo apt install -y zip libapache2-mod-php phploc php-{xml,bcmath,bz2,intl,gd,mbstring,mysql,zip}`
+
+3. Install Jenkins plugins
+
+  Plot plugin
+
+  Artifactory plugin
+
+We will use plot plugin to display tests reports, and code coverage information.
+The Artifactory plugin will be used to easily upload code artifacts into an Artifactory server.
+
+4. In Jenkins UI configure Artifactory
+
+![artifactory-config](./images-project14/artifactory-config.PNG)
+
+![artifactory-config2](./images-project14/artifactory-config2.PNG)
+
+### **Phase 2 – Integrate Artifactory repository with Jenkins**
+
+1. Create a dummy Jenkinsfile in the repository
+
+2. Using `Blue Ocean`, create a multibranch Jenkins pipeline
+
+3. On the database server, create database and user
+
+```py
+Create database homestead;
+CREATE USER 'homestead'@'%' IDENTIFIED BY 'sePret^i';
+GRANT ALL PRIVILEGES ON * . * TO 'homestead'@'%';
+```
+
+**Update the database connectivity requirements in the file `.env.sample`**
+
+Update Jenkinsfile with proper pipeline configuration
+
+
+```py
+pipeline {
+    agent any
+
+  stages {
+
+     stage("Initial cleanup") {
+          steps {
+            dir("${WORKSPACE}") {
+              deleteDir()
+            }
+          }
+        }
+
+    stage('Checkout SCM') {
+      steps {
+            git branch: 'main', url: 'https://github.com/darey-devops/php-todo.git'
+      }
+    }
+
+    stage('Prepare Dependencies') {
+      steps {
+             sh 'mv .env.sample .env'
+             sh 'composer install'
+             sh 'php artisan migrate'
+             sh 'php artisan db:seed'
+             sh 'php artisan key:generate'
+      }
+    }
+  }
+}
+```
+
+Notice the Prepare Dependencies section
+
+The required file by `PHP` is `.env` so we are `renaming .env.sample to .env`
+
+`Composer` is used by `PHP to install all the dependent libraries` used by the application
+
+`php artisan` uses the `.env` file to `setup the required database objects` – (After successful run of this step, 
+
+`login to the database`, run `show tables` and you will see the `tables being created` for you)
+
+4. Update the `Jenkinsfile` to include Unit tests step
+   
+```py
+
+    stage('Execute Unit Tests') {
+      steps {
+             sh './vendor/bin/phpunit'
+      } 
+    }
+
+```      
+
+### **Phase 3 – Code Quality Analysis**
+
+
+This is one of the areas where developers, architects and many stakeholders are mostly interested in as far as product development is concerned. As a DevOps engineer, you also have a role to play. Especially when it comes to setting up the tools.
+
+For `PHP` the most commonly tool used for code `quality analysis` is `phploc`. [Read the article here for more](https://matthiasnoback.nl/2019/09/using-phploc-for-quick-code-quality-estimation-part-1/)
+
+
+The `data produced by phploc` can be `ploted onto graphs in Jenkins`.
+
+1. Add the code analysis step in `Jenkinsfile`. The output of the data will be saved in `build/logs/phploc.csv` file.
+   
+```py
+stage('Code Analysis') {
+  steps {
+        sh 'phploc app/ --log-csv build/logs/phploc.csv'
+
+  }
+}
+
+
+2. Plot the data using `plot Jenkins plugin`.
+
+This plugin provides generic `plotting` (or graphing) capabilities in `Jenkins`. It will `plot` one or more single values variations across builds in one or more plots. Plots for a particular job (or project) are `configured in the job configuration screen`, where each field has additional help information. `Each plot can have one or more lines (called data series)`. After each build completes the plots’ data series latest values are pulled from the `CSV` file generated by `phploc`.
+
+```py
+    stage('Plot Code Coverage Report') {
+      steps {
+
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Lines of Code (LOC),Comment Lines of Code (CLOC),Non-Comment Lines of Code (NCLOC),Logical Lines of Code (LLOC)                          ', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'A - Lines of code', yaxis: 'Lines of Code'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Directories,Files,Namespaces', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'B - Structures Containers', yaxis: 'Count'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Average Class Length (LLOC),Average Method Length (LLOC),Average Function Length (LLOC)', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'C - Average Length', yaxis: 'Average Lines of Code'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Cyclomatic Complexity / Lines of Code,Cyclomatic Complexity / Number of Methods ', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'D - Relative Cyclomatic Complexity', yaxis: 'Cyclomatic Complexity by Structure'      
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Classes,Abstract Classes,Concrete Classes', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'E - Types of Classes', yaxis: 'Count'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Methods,Non-Static Methods,Static Methods,Public Methods,Non-Public Methods', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'F - Types of Methods', yaxis: 'Count'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Constants,Global Constants,Class Constants', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'G - Types of Constants', yaxis: 'Count'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Test Classes,Test Methods', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'I - Testing', yaxis: 'Count'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Logical Lines of Code (LLOC),Classes Length (LLOC),Functions Length (LLOC),LLOC outside functions or classes ', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'AB - Code Structure by Logical Lines of Code', yaxis: 'Logical Lines of Code'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Functions,Named Functions,Anonymous Functions', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'H - Types of Functions', yaxis: 'Count'
+            plot csvFileName: 'plot-396c4a6b-b573-41e5-85d8-73613b2ffffb.csv', csvSeries: [[displayTableFlag: false, exclusionValues: 'Interfaces,Traits,Classes,Methods,Functions,Constants', file: 'build/logs/phploc.csv', inclusionFlag: 'INCLUDE_BY_STRING', url: '']], group: 'phploc', numBuilds: '100', style: 'line', title: 'BB - Structure Objects', yaxis: 'Count'
+
+      }
+    }
+
+```
+
+You should now seen a `Plot menu` item on the left menu. `Click on it to see the charts`. (The analytics may not mean much to you as it is meant to be read by developers. So, you need not worry much about it – this is just to give you an idea of the real-world implementation).
