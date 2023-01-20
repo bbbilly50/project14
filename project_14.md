@@ -221,6 +221,62 @@ A QUICK TASK FOR YOU!
 5. Verify in Blue Ocean that all the stages are working, then merge your feature branch to the main branch
 6. Eventually, your main branch should have a successful pipeline like this in blue ocean
 
+
+```
+  pipeline {
+    agent any
+
+  stages {
+    stage("Initial cleanup") {
+          steps {
+            dir("${WORKSPACE}") {
+              deleteDir()
+            }
+          }
+        }
+    stage('Build') {
+      steps {
+        script {
+          sh 'echo "Building Stage"'
+        }
+      }
+    }
+
+    stage('Test') {
+      steps {
+        script {
+          sh 'echo "Testing Stage"'
+        }
+      }
+    }
+
+    stage('Package'){
+      steps {
+        script {
+          sh 'echo "Packaging App" '
+        }
+      }
+    }
+
+    stage('Deploy'){
+      steps {
+        script {
+          sh 'echo "Deploying to Dev"'
+        }
+      }
+
+    }
+    
+    stage("clean Up"){
+       steps {
+        cleanWs()
+     }
+    }
+     
+    }
+}
+```
+
 ![stages](./images-project14/blue-ocea-stages.PNG)
 
 ![cleanup](./images-project14/branch-cleanup.PNG)
@@ -256,11 +312,11 @@ Note: Ensure that Ansible runs against the Dev environment successfully.
 
   python3 -m pip install mysql-connector-python
 
-  python3 -m pip install psycopg2==2.7.5 --ignore-installed
+  
 ```
 
 ### Ansible dependencies to install
-
+python3 -m pip install psycopg2==2.7.5 --ignore-installed
 **Install ansible community lib**
 
   **For Mysql Database**
@@ -301,6 +357,56 @@ If you push new changes to Git so that Jenkins failure can be fixed. You might o
 Another possible reason for Jenkins failure sometimes, is because you have indicated in the Jenkinsfile to `check out the main git branch`, and you are `running a pipeline from another branch`. So, always verify by logging onto the `Jenkins` box to `check` the `workspace`, and run `git branch command` to confirm that the branch you are expecting is there.
 
 If everything goes well for you, it means, the `Dev` environment has an `up-to-date configuration`. 
+
+```py
+pipeline {
+  agent any
+
+  environment {
+      ANSIBLE_CONFIG="${WORKSPACE}/deploy/ansible.cfg"
+    }
+
+    stages{
+      stage("Initial cleanup") {
+          steps {
+            dir("${WORKSPACE}") {
+              deleteDir()
+            }
+          }
+        }
+
+      stage('Checkout SCM') {
+         steps{
+            git branch: 'feature/jenkinspipeline-stages', url: 'https://github.com/bbbilly50/project14.git'
+         }
+       }
+
+      stage('Prepare Ansible For Execution') {
+        steps {
+          sh 'echo ${WORKSPACE}' 
+          sh 'sed -i "3 a roles_path=${WORKSPACE}/roles" ${WORKSPACE}/deploy/ansible.cfg'  
+        }
+     }
+
+      stage('Run Ansible playbook') {
+        steps {
+           
+           ansiblePlaybook colorized: true, credentialsId: 'mykey', disableHostKeyChecking: true, installation: 'ansible', inventory: 'inventory/dev', playbook: 'playbooks/site.yml'
+         }
+      }
+
+      stage('Clean Workspace after build') {
+        steps {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenUnstable: true, deleteDirs: true)
+        }
+      }
+   }
+
+}
+
+```
+
+![dev-pipline](./images-project14/pipline-dev.PNG)
 
 But what if we need to deploy to other environments?
 
@@ -352,12 +458,65 @@ pipeline {
 ...
 ```
 
-3. In the Ansible execution section, remove the hardcoded inventory/dev and replace with `${inventory}
+3. In the Ansible execution section, remove the hardcoded inventory/dev and replace with `${inventory}`
 From now on, each time you hit on execute, it will expect an input.
 
+```py
+pipeline {
+  agent any
+
+  environment {
+      ANSIBLE_CONFIG="${WORKSPACE}/deploy/ansible.cfg"
+    }
+
+  parameters {
+      string(name: 'inventory', defaultValue: 'dev',  description: 'This is the inventory file for the environment to deploy configuration')
+    }
+
+  stages{
+      stage("Initial cleanup") {
+          steps {
+            dir("${WORKSPACE}") {
+              deleteDir()
+            }
+          }
+        }
+
+      stage('Checkout SCM') {
+         steps{
+            git branch: 'feature/jenkinspipeline-stages', url: 'https://github.com/bbbilly50/project14.git'
+         }
+       }
+
+      stage('Prepare Ansible For Execution') {
+        steps {
+          sh 'echo ${WORKSPACE}' 
+          sh 'sed -i "3 a roles_path=${WORKSPACE}/roles" ${WORKSPACE}/deploy/ansible.cfg'  
+        }
+     }
+
+      stage('Run Ansible playbook') {
+        steps {
+           
+           ansiblePlaybook colorized: true, credentialsId: 'mykey', disableHostKeyChecking: true, installation: 'ansible', inventory: 'inventory/${inventory}', playbook: 'playbooks/site.yml'
+         }
+      }
+
+      stage('Clean Workspace after build') {
+        steps {
+          cleanWs(cleanWhenAborted: true, cleanWhenFailure: true, cleanWhenNotBuilt: true, cleanWhenUnstable: true, deleteDirs: true)
+        }
+      }
+   }
+
+}
+
+```
 
 
-Notice that the default value loads up, but we can now specify which environment we want to deploy the configuration to. Simply type sit and hit Run
+Notice that the default value loads up, but we can now specify which environment we want to deploy the configuration to. Simply type `sit` and hit Run
+
+![parameter](./images-project14/parameter-build.PNG)
 
 
 
@@ -370,3 +529,55 @@ Add another parameter. This time, introduce tagging in Ansible. You can limit th
 Our goal here is to `deploy` the application onto servers directly from `Artifactory` rather than from `git`. If you have not updated Ansible with an `Artifactory role`, simply use this guide to create an Ansible role for Artifactory (ignore the Nginx part). 
 
 [Configure Artifactory on Ubuntu 20.04](https://www.howtoforge.com/tutorial/ubuntu-jfrog/)
+
+**Phase 1 – Prepare Jenkins**
+
+1. Fork the repository below into your GitHub account
+   
+https://github.com/darey-devops/php-todo.git
+
+2. On the `Jenkins` server, `install PHP`, its dependencies and `Composer tool` (Feel free to do this manually at first, then update your Ansible accordingly later)
+   
+ ```
+ yum module reset php -y
+
+ yum module enable php:remi-7.4 -y
+
+ yum install -y php  php-common php-mbstring php-opcache php-intl php-xml php-gd php-curl php-mysqlnd    php-fpm php-json
+
+systemctl start php-fpm
+
+ systemctl enable php-fpm
+
+ ```
+
+ systemctl status php-fpm
+
+![satatus-php](./images-project14/php-status.PNG)
+!
+Install composer
+=====================================
+
+ `curl -sS https://getcomposer.org/installer | php 
+sudo mv composer.phar /usr/bin/composer`
+
+Verify Composer version
+
+ `sudo composer --version`
+
+![composer-v](./images-project14/composer-version.PNG)
+
+
+
+
+1. Install Jenkins plugins
+   
+ - Plot plugin
+  
+ - Artifactory plugin
+
+We will use `plot plugin` to display tests reports, and code coverage information.
+
+The `Artifactory plugin` will be used to easily upload code artifacts into an Artifactory server.
+
+4. In Jenkins UI configure Artifactory
