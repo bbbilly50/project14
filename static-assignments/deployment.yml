@@ -7,9 +7,10 @@
     - name: install remi and rhel repo
       ansible.builtin.yum:
         name: 
-          - https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-          - https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm
-          - dnf-utils, http://rpms.remirepo.net/enterprise/remi-release-9.rpm -y
+          - "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+          - "https://dl.fedoraproject.org/pub/epel/epel-next-release-latest-9.noarch.rpm"
+          - dnf-utils
+          - "http://rpms.remirepo.net/enterprise/remi-release-9.rpm -y"
         
         #   - https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
         #   - dnf-utils
