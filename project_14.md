@@ -1618,6 +1618,8 @@ The quality gate we just included has no effect. Why? Well, because if you go to
 
 Navigate to `php-todo project in SonarQube`
 
+![sonar-quality-test](./images-project14/sonarq-qulity-test.PNG)
+
 
 There are `bugs`, and there is `0.0% code coverage`. (code coverage is a percentage of `unit tests` added by developers to test functions and objects in the code)
 
