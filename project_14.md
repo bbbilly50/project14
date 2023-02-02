@@ -668,6 +668,7 @@ This plugin provides generic `plotting` (or graphing) capabilities in `Jenkins`.
 
 ```
 
+
 ```py
 pipeline {
     agent any
@@ -735,9 +736,13 @@ pipeline {
 
 
 
-You should now seen a `Plot menu` item on the left menu. `Click on it to see the charts`. (The analytics may not mean much to you as it is meant to be read by developers. So, you need not worry much about it – this is just to give you an idea of the real-world implementation).
+You should now see a `Plot menu` item on the left menu. `Click on it to see the charts`. (The analytics may not mean much to you as it is meant to be read by developers. So, you need not worry much about it – this is just to give you an idea of the real-world implementation).
 
-1. **Bundle the application code for into an artifact (archived package) upload to Artifactory**
+
+![plot](./images-project14/plot.PNG)
+
+
+1. **Bundle the application code into an artifact (archived package) upload to Artifactory**
    
    - Install Zip
 
@@ -781,6 +786,7 @@ stage ('Upload Artifact to Artifactory') {
 
 ![artifactory-target-update](./images-project14/artifactory-target-update.PNG)
 
+
 ```py
 pipeline {
     agent any
@@ -797,7 +803,7 @@ pipeline {
 
     stage('Checkout SCM') {
       steps {
-            git branch: 'main', url: 'https://github.com/Livingstone95/php-todo.git'
+            git branch: 'main', url: 'https://github.com/bbbilly50/php-todo.git'
       }
     }
 
@@ -1384,27 +1390,26 @@ In Jenkins, install `SonarScanner plugin`
 
 Navigate to `configure system` in Jenkins. Add SonarQube server as shown below:
 
-  `Manage Jenkins > Configure System`
-
-
+`Manage Jenkins > Configure System`
 
 `Generate authentication token in SonarQube`
 
- User > My Account > Security > Generate Tokens
+User > My Account > Security > Generate Tokens
 
-
+![token-sonarq](./images-project14/token-sonarq.PNG)
 
 Configure Quality Gate Jenkins Webhook in SonarQube – The URL should point to your Jenkins server `http://{JENKINS_HOST}/sonarqube-webhook/`
 
+
 Administration > Configuration > Webhooks > Create
 
-
+![webhook-sonarq](./images-project14/webhook-sonarq.PNG)
 
 Setup SonarQube scanner from Jenkins – Global Tool Configuration
 
 Manage Jenkins > Global Tool Configuration
 
-
+![sonarq-config](./images-project14/sonarq-config.PNG)
 
 **Update Jenkins Pipeline to include `SonarQube scanning and Quality Gate`**
 
@@ -1533,7 +1538,6 @@ pipeline {
 ```
 
 NOTE: The above step will fail because we have not updated `sonar-scanner`.properties
-
 
 
 
@@ -1796,12 +1800,14 @@ stage('Plot Code Coverage Report') {
 
 ![conditionnal-deployment](./images-project14/conditionnal-deployment.PNG)
 
+![project14/conditionnal-deployment2](./images-project14/conditionnal-deployment2.PNG)
+
 
 Notice that with the current state of the code, it cannot be deployed to Integration environments due to its quality. In the real world, DevOps engineers will push this back to developers to work on the code further, based on `SonarQube quality report`. Once everything is good with code quality, the pipeline will pass and proceed with sipping the codes further to a higher environment.
 
-Complete the following tasks to finish Project 14
+**Completing tasks**
 
-1 - Introduce Jenkins agents/slaves – Add 2 more servers to be used as Jenkins slave. Configure Jenkins to run its pipeline jobs randomly on any available slave nodes.
+ - **Introduce Jenkins agents/slaves** – Add 2 more servers to be used as Jenkins slave. Configure Jenkins to run its pipeline jobs randomly on any available slave nodes.
 
 Steps -
 1. Create 2 EC2 instances
@@ -1828,20 +1834,14 @@ if you dont have ssh credencials configured in jenkins global
 
 ![github-webhook](./images-project14/github-webhook.PNG)
 
-3 - Deploy the application to all the environments
+ - **Deploy the application to all the environments**
 
-Optional – Experience pentesting in pentest environment by configuring Wireshark there and just explore for information sake only. Watch Wireshark Tutorial here
+Optional – Experience `pentesting` in pentest environment by configuring` Wireshark` there and just explore for information sake only. Watch Wireshark Tutorial here
 Ansible Role for Wireshark:
+
 https://github.com/ymajik/ansible-role-wireshark (Ubuntu)
 https://github.com/wtanaka/ansible-role-wireshark (RedHat)
 
-Congratulations! You have just experienced one of the most interesting and complex projects in you Project Based Learning journey so far. The vast experience and knowledge you have acquired here will set the stage for the next 6 projects to come. You should be ready to start applying for DevOps jobs after completing Project 20.
 
 
 
-Instructions On How To Submit Your Work For Review And Feedback
-To submit your work for review and feedback – follow this instruction.
-In addition to your GitHub projects (both, Ansible and PHP application) also prepare and submit the following:
-
-Make a short video on how your pipelines have executed
-In the video, showcase your SonarQube UI
