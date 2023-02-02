@@ -32,6 +32,11 @@ source ~/.bash_profile
 - yum install -y php  php-common php-mbstring php-opcache php-intl php-xml php-gd php-curl php-mysqlnd    php-fpm php-json
 - systemctl start php-fpm
 - systemctl enable php-fpm
+  
+  ##### Install php and composer dependancies on Debian
+  ============================================
+
+    `sudo apt install -y zip libapache2-mod-php phploc php-{xml,bcmath,bz2,intl,gd,mbstring,mysql,zip}`
 
 
 #### Ansible dependencies to install
@@ -51,6 +56,7 @@ source ~/.bash_profile
 - composer --version
 
 
+
 #### Install phpunit, phploc
 =====================================
 - sudo dnf --enablerepo=remi install php-phpunit-phploc
@@ -63,7 +69,10 @@ source ~/.bash_profile
 DB_CONNECTION=mysql
 DB_PORT=3306
 
-sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf
+### change bind-address in mysql-server:
+
+sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf 
+### Install mysql client in the jenkins-server
 sudo yum install mysql -y
 
 `Learn how to install Jenkins [here](https://www.jenkins.io/doc/book/installing/)`
