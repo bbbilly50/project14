@@ -1814,6 +1814,8 @@ Notice that with the current state of the code, it cannot be deployed to Integra
 Steps -
 1. Create 2 EC2 instances
 
+![jenkins-agents](./images-project14/jenkins-agents.PNG)
+
 2. Install java on slave nodes
 
 if you dont have ssh credencials configured in jenkins global
